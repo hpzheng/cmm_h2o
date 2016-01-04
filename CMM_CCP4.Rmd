@@ -1,0 +1,137 @@
+---
+title: "Validation of metal and other single atom binding sites in macromolecular structures"
+author: "Heping Zheng"
+date: "January 4, 2016"
+output: ioslides_presentation
+---
+
+## R Markdown
+
+ protons_ion | atomname_ion | count 
+-------------+--------------+-------
+           7 | UNK-         |  3259
+          11 | NA--         | 17122
+          12 | MG--         | 55296
+          17 | CL--         | 12843
+          19 | -K--         |  6046
+          20 | CA--         | 25093
+          25 | MN--         |  8191
+          26 | FE1-         |  3390
+          26 | FE--         | 15497
+          26 | FE3-         |  2129
+          26 | FE2-         |  3054
+          26 | FE4-         |  2119
+          27 | CO--         |  2719
+          28 | NI--         |  2288
+          29 | CU--         |  3918
+          30 | ZN--         | 27751
+          33 | AS--         |  1132
+          35 | BR--         |   602
+          38 | SR--         |  3687
+          48 | CD--         |  4352
+          53 | -I--         |  2252
+          55 | CS--         |   492
+          56 | BA--         |   558
+          78 | PT--         |   482
+          80 | HG--         |  1133
+(25 rows)
+
+neighborhood15-list_metal_2015_pdbids=# select protons_ion,sum(count) from (select protons_ion,atomname_ion,count(*) from ion_bindingsites group by protons_ion,atomname_ion) a where count > 480 group by protons_ion order by protons_ion asc;
+ protons_ion |  sum  
+-------------+-------
+           7 |  3259
+          11 | 17122
+          12 | 55296
+          17 | 12843
+          19 |  6046
+          20 | 25093
+          25 |  8191
+          26 | 26189
+          27 |  2719
+          28 |  2288
+          29 |  3918
+          30 | 27751
+          33 |  1132
+          35 |   602
+          38 |  3687
+          48 |  4352
+          53 |  2252
+          55 |   492
+          56 |   558
+          78 |   482
+          80 |  1133
+(21 rows)
+
+## Slide with Bullets
+
+- 75536 sites in the validated dataset: CMM_CCP4_dataset_metal_validated.csv
+- Bullet 2
+- Bullet 3
+
+## Slide with R Code and Output
+
+```{r}
+rm(list = ls())
+setwd('/Users/dust/src/cmm_ccp4')
+cmm <- read.csv('CMM_CCP4_dataset_metal_validated.csv')
+cmm <- cmm[,c(13,11:12,14:92)]
+cmm$protons_ion <- as.factor(cmm$protons_ion)
+cmm$cmm4 <- as.factor(cmm$cmm4)
+cmm$cmm6 <- as.factor(cmm$cmm6)
+cmm$which_metal <- as.factor(cmm$which_metal)
+cmm$which_geotype <- as.factor(cmm$which_geotype)
+cmm$which_ligtype <- as.factor(cmm$which_ligtype)
+cmm$which_xhcxx <- as.factor(cmm$which_xhcxx)
+cmm$which_ooo <- as.factor(cmm$which_ooo)
+cmm$which_wooo2 <- as.factor(cmm$which_wooo2)
+cmm$which_ppp <- as.factor(cmm$which_ppp)
+cmm$which_bnr <- as.factor(cmm$which_bnr)
+cmm$which_wbnr2 <- as.factor(cmm$which_wbnr2)
+cmm$which_mbrp2 <- as.factor(cmm$which_mbrp2)
+cmm$which_isoform <- as.factor(cmm$which_isoform)
+cmm$which_mobile <- as.factor(cmm$which_mobile)
+cmm$geometry_type <- as.factor(cmm$geometry_type)
+cmm$geometry_bidentate <- as.factor(cmm$geometry_bidentate)
+cmm$geometry_pseudo <- as.factor(cmm$geometry_pseudo)
+
+inTrain = createDataPartition(cmm$which_metal, p = 2/3)[[1]]
+training = cmm[ inTrain,]
+testing = cmm[-inTrain,]
+write.csv(training, file="cmm_training")
+write.csv(testing, file="cmm_testing")
+
+
+
+library(h2o)
+localH2O <- h2o.init(ip = "localhost", port = 54321, startH2O = TRUE)
+train_hex <- h2o.importFile(path = "cmm_training")
+test_hex <- h2o.importFile(path = "cmm_testing")
+train_hex_split <- h2o.splitFrame(train_hex, ratios = 0.8)
+
+model <- 
+  h2o.deeplearning(x = 3:83,  # column numbers for predictors
+                   y = 2,   # column number for label
+                   training_frame = train_hex_split[[1]], # data in H2O format
+                   validation_frame = train_hex_split[[2]], # data in H2O format
+                   activation = "Rectifier", # or 'Tanh'
+                   input_dropout_ratio = 0.2, # % of inputs dropout
+                   hidden_dropout_ratios = c(0.5,0.5,0.5), # % for nodes dropout
+                   balance_classes = TRUE, 
+                   hidden = c(50,50,50), # three layers of 50 nodes
+                   epochs = 100) # max. no. of epochs
+```
+
+## Slide with Plot
+
+```{r, echo=FALSE}
+path_cloud <- getwd()
+path_train <- paste0(path_cloud, "/data/train.zip")
+path_test <- paste0(path_cloud, "/data/test.zip")
+path_submission <- paste0(path_cloud, "/data/sample_submission.csv")
+path_output <- paste0(path_cloud, "/results/my_Kaggle_submission.csv")
+
+train_hex <- h2o.importFile(path = path_train)
+test_hex <- h2o.importFile(path = path_test)
+raw_sub <- read.csv(path_submission)
+```
+
